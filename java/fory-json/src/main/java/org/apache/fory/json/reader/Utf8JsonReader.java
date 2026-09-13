@@ -2569,8 +2569,12 @@ public final class Utf8JsonReader extends JsonReader {
         (datePrefix & 0xffffffffL)
             | ((datePrefix >>> 8) & 0xffff00000000L)
             | ((long) ((dateSuffix >>> 8) & 0xffff) << 48);
-    long dateDigits = dateText - ASCII_ZEROES;
-    if (((dateDigits | (ASCII_NINES - dateText)) & ASCII_HIGH_BITS) != 0) {
+    // ASCII digits have high nibble 3 and low nibble below 10. Adding six to each
+    // isolated low nibble exposes values 10 through 15 without carrying into another byte.
+    long dateDigits = dateText & 0x0f0f0f0f0f0f0f0fL;
+    if ((((dateText ^ ASCII_ZEROES) & 0xf0f0f0f0f0f0f0f0L)
+            | ((dateDigits + 0x0606060606060606L) & 0x1010101010101010L))
+        != 0) {
       return null;
     }
     long datePairs = ((dateDigits * (10 * 256 + 1)) >>> 8) & 0x00ff00ff00ff00ffL;
@@ -2583,8 +2587,10 @@ public final class Utf8JsonReader extends JsonReader {
             | ((timePrefix >>> 8) & 0xffff0000L)
             | ((timePrefix >>> 16) & 0xffff00000000L)
             | 0x3030000000000000L;
-    long timeDigits = timeText - ASCII_ZEROES;
-    if (((timeDigits | (ASCII_NINES - timeText)) & ASCII_HIGH_BITS) != 0) {
+    long timeDigits = timeText & 0x0f0f0f0f0f0f0f0fL;
+    if ((((timeText ^ ASCII_ZEROES) & 0xf0f0f0f0f0f0f0f0L)
+            | ((timeDigits + 0x0606060606060606L) & 0x1010101010101010L))
+        != 0) {
       return null;
     }
     // The three pairs fit in separate 16-bit lanes. Biasing by 32768 minus each bound

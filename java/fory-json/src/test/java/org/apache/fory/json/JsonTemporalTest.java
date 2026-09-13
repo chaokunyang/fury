@@ -1101,6 +1101,35 @@ public class JsonTemporalTest extends ForyJsonTestModels {
   }
 
   @Test
+  public void readInstantDigits() {
+    byte[] token = "\"2024-02-29T23:59:59Z\"".getBytes(StandardCharsets.US_ASCII);
+    for (int lane : new int[] {1, 2, 3, 4, 6, 7, 9, 10, 12, 13, 15, 16, 18, 19}) {
+      byte original = token[lane];
+      for (int value = 0; value < 256; value++) {
+        token[lane] = (byte) value;
+        Latin1JsonReader reference = newLatin1Reader(token);
+        Utf8JsonReader reader = newUtf8Reader(token);
+        Instant expected;
+        try {
+          expected = reference.readIsoInstant();
+          reference.finish();
+        } catch (RuntimeException e) {
+          assertThrows(
+              RuntimeException.class,
+              () -> {
+                reader.readIsoInstant();
+                reader.finish();
+              });
+          continue;
+        }
+        assertEquals(reader.readIsoInstant(), expected);
+        reader.finish();
+      }
+      token[lane] = original;
+    }
+  }
+
+  @Test
   public void readZonedCalendar() {
     ZoneId[] zones = {ZoneId.of("Europe/Paris"), ZoneId.of("America/New_York"), ZoneId.of("UTC")};
     for (int year : new int[] {0, 1, 399, 400, 1970, 2000, 2024, 9999}) {
