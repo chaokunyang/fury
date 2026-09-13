@@ -2512,10 +2512,42 @@ public final class Utf8JsonReader extends JsonReader {
   @Override
   public LocalTime readIsoLocalTime() {
     skipWhitespaceFast();
+    byte[] bytes = input;
+    int limit = inputLimit;
     int mark = position;
-    if (mark < inputLimit && input[mark] == '"') {
-      LocalTime value = tryReadTime(mark + 1);
-      if (value != null && position < inputLimit && input[position] == '"') {
+    int start = mark + 1;
+    // This owner validates a complete quoted time before constructing its result. The fractional
+    // reader may update position; date/time formats retain tryReadTime for unquoted components.
+    parse:
+    {
+      if (mark >= limit || bytes[mark] != '"') {
+        break parse;
+      }
+      if (start <= limit - 9) {
+        long text = LittleEndian.getInt64(bytes, start);
+        long digits = text - 0x30303a30303a3030L;
+        if (((digits | (0x39393a39393a3939L - text)) & ASCII_HIGH_BITS) == 0) {
+          int hour = (int) (digits & 0xff) * 10 + (int) ((digits >>> 8) & 0xff);
+          int minute = (int) ((digits >>> 24) & 0xff) * 10 + (int) ((digits >>> 32) & 0xff);
+          int second = (int) ((digits >>> 48) & 0xff) * 10 + (int) (digits >>> 56);
+          int end = start + 8;
+          int nano = 0;
+          if (bytes[end] == '.') {
+            nano = readFractionNanos(end + 1);
+            end = position;
+          }
+          if (hour > 23 || minute > 59 || second > 59) {
+            break parse;
+          }
+          if (end >= limit || bytes[end] != '"') {
+            break parse;
+          }
+          position = end + 1;
+          return localTime(hour, minute, second, nano);
+        }
+      }
+      LocalTime value = tryReadMinuteTime(start);
+      if (value != null && position < limit && bytes[position] == '"') {
         position++;
         return value;
       }
