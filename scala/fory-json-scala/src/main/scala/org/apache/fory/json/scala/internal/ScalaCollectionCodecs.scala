@@ -563,6 +563,10 @@ private[scala] final class ScalaMapCodec(kind: Int, ownerBytes: Int, runtimeType
       writeIntMap(writer, value.asInstanceOf[scala.collection.immutable.IntMap[Any]])
       return
     }
+    if (kind == ScalaCollectionCodecs.MutableLongMapKind && keyCodec.isInstanceOf[MapCodec.LongKeyCodec]) {
+      writeLongMap(writer, value.asInstanceOf[scala.collection.mutable.LongMap[Any]])
+      return
+    }
     val codec = valueInfo.stringWriter()
     val iterator = value.iterator
     writer.writeObjectStart()
@@ -586,6 +590,10 @@ private[scala] final class ScalaMapCodec(kind: Int, ownerBytes: Int, runtimeType
     ScalaCollectionCodecs.requireSupportedRuntime(value.getClass)
     if (kind == ScalaCollectionCodecs.ImmutableIntMapKind && keyCodec.isInstanceOf[MapCodec.IntKeyCodec]) {
       writeIntMap(writer, value.asInstanceOf[scala.collection.immutable.IntMap[Any]])
+      return
+    }
+    if (kind == ScalaCollectionCodecs.MutableLongMapKind && keyCodec.isInstanceOf[MapCodec.LongKeyCodec]) {
+      writeLongMap(writer, value.asInstanceOf[scala.collection.mutable.LongMap[Any]])
       return
     }
     val codec = valueInfo.utf8Writer()
@@ -632,6 +640,39 @@ private[scala] final class ScalaMapCodec(kind: Int, ownerBytes: Int, runtimeType
     value.foreachEntry { (key, entryValue) =>
       if (writer.getPosition() != start) writer.writeComma(1)
       writer.writeIntFieldName(key)
+      codec.writeUtf8(writer, entryValue)
+    }
+    writer.writeObjectEnd()
+  }
+
+  private def writeLongMap(
+      writer: StringJsonWriter,
+      value: scala.collection.mutable.LongMap[Any]
+  ): Unit = {
+    val codec = valueInfo.stringWriter()
+    writer.writeObjectStart()
+    var first = true
+    // The standard entry traversal handles the zero/minimum keys and deleted slots without
+    // allocating iterator tuples. Custom key codecs retain the generic map path above.
+    value.foreachEntry { (key, entryValue) =>
+      if (first) first = false else writer.writeComma(1)
+      writer.writeLongFieldName(key)
+      codec.writeString(writer, entryValue)
+    }
+    writer.writeObjectEnd()
+  }
+
+  private def writeLongMap(
+      writer: Utf8JsonWriter,
+      value: scala.collection.mutable.LongMap[Any]
+  ): Unit = {
+    val codec = valueInfo.utf8Writer()
+    writer.writeObjectStart()
+    val start = writer.getPosition()
+    // The member name advances the cursor even when the child value is null or custom-coded.
+    value.foreachEntry { (key, entryValue) =>
+      if (writer.getPosition() != start) writer.writeComma(1)
+      writer.writeLongFieldName(key)
       codec.writeUtf8(writer, entryValue)
     }
     writer.writeObjectEnd()

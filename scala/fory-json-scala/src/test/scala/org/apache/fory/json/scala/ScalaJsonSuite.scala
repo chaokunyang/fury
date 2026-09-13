@@ -807,6 +807,39 @@ class ScalaJsonSuite extends AnyFunSuite {
     assert(shallow.fromJson("{}".getBytes(UTF_8), mapType).isEmpty)
   }
 
+  test("long map entries") {
+    val mapType = new TypeRef[scala.collection.mutable.LongMap[String]]() {}
+    val nestedType = new TypeRef[List[scala.collection.mutable.LongMap[String]]]() {}
+    val keys = Seq(Long.MinValue, Long.MaxValue, 0L, -1L, 1L) ++
+      (2L to 1026L).map(i => (i << 32) | i)
+    val populated = scala.collection.mutable.LongMap(
+      keys.zipWithIndex.map { case (key, index) =>
+        key -> (if (index % 3 == 0) null else "value:\"\u0100/" + index)
+      }: _*
+    )
+    keys.drop(5).zipWithIndex.foreach { case (key, index) =>
+      if (index % 4 == 0) populated.remove(key)
+    }
+    for (json <- Seq(
+        ForyJsonScala.builder().withCodegen(false).build(),
+        ForyJsonScala.builder().withAsyncCompilation(false).build()
+      ); value <- Seq(scala.collection.mutable.LongMap.empty[String],
+        scala.collection.mutable.LongMap(7L -> "seven"), populated)) {
+      val expected = value.iterator.map { case (key, entryValue) =>
+        "\"" + key + "\":" + json.toJson(entryValue)
+      }.mkString("{", ",", "}")
+      assert(json.toJson(value, mapType) == expected)
+      assert(new String(json.toJsonBytes(value, mapType), UTF_8) == expected)
+      assert(json.toJson(value) == expected)
+      assert(new String(json.toJsonBytes(value), UTF_8) == expected)
+      assert(json.toJson(List(value), nestedType) == "[" + expected + "]")
+      assert(new String(json.toJsonBytes(List(value), nestedType), UTF_8) == "[" + expected + "]")
+      assert(json.fromJson(expected, mapType) == value)
+      assert(json.toJson(null, mapType) == "null")
+      assert(new String(json.toJsonBytes(null, mapType), UTF_8) == "null")
+    }
+  }
+
   test("long map codec slots") {
     val value = LongMapCodecSlots(
       scala.collection.mutable.LongMap(1L -> "one"),
@@ -819,6 +852,7 @@ class ScalaJsonSuite extends AnyFunSuite {
       val text = json.toJson(value)
       assert(text.contains("\"1\":\"tag:one\""))
       assert(text.contains("\"key:-1\":\"tag:minus\""))
+      assert(new String(json.toJsonBytes(value), UTF_8) == text)
       assert(json.fromJson(text, classOf[LongMapCodecSlots]) == value)
       assert(json.fromJson(text.getBytes(UTF_8), classOf[LongMapCodecSlots]) == value)
     }
