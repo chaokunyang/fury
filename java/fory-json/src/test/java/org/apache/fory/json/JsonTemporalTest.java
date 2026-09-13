@@ -1560,7 +1560,20 @@ public class JsonTemporalTest extends ForyJsonTestModels {
         ScalarCodecs.YearCodec.INSTANCE.writeUtf8(writer, Year.of(year));
         assertEquals(
             new String(writer.toJsonBytes(), StandardCharsets.UTF_8), prefix + '"' + year + '"');
+        writer.writeComma(1);
+        writer.writeInt(17);
+        assertEquals(
+            new String(writer.toJsonBytes(), StandardCharsets.UTF_8),
+            prefix + '"' + year + "\",17");
       }
+    }
+    Utf8JsonWriter writer = newUtf8Writer(new byte[1]);
+    for (int year = 1000; year <= 9999; year++) {
+      writer.reset();
+      ScalarCodecs.YearCodec.INSTANCE.writeUtf8(writer, Year.of(year));
+      writer.writeComma(1);
+      writer.writeInt(17);
+      assertEquals(new String(writer.toJsonBytes(), StandardCharsets.UTF_8), "\"" + year + "\",17");
     }
   }
 

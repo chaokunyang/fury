@@ -1087,6 +1087,13 @@ public final class Utf8JsonWriter extends JsonWriter implements Appendable {
       grow(12);
     }
     byte[] bytes = buffer;
+    if (year >= 1000 && year <= 9999) {
+      // A four-digit year and its quotes occupy six bytes. The complete-year reservation
+      // also covers the two spare bytes in this word, which are outside logical output.
+      LittleEndian.putInt64(bytes, pos, '"' | ((long) DIGIT_QUADS[year] << 8) | ((long) '"' << 40));
+      position = pos + 6;
+      return;
+    }
     bytes[pos++] = '"';
     if (year < 0) {
       bytes[pos++] = '-';
