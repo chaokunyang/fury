@@ -3107,15 +3107,23 @@ public final class Utf8JsonReader extends JsonReader {
     skipWhitespaceFast();
     int offset = position;
     byte[] bytes = input;
-    if (offset <= inputLimit - 9
-        && bytes[offset] == '"'
-        && bytes[offset + 5] == '-'
-        && bytes[offset + 8] == '"') {
-      int year = parseFourDigits(bytes, offset + 1, inputLimit);
-      int month = parse2(bytes, offset + 6);
-      if (year >= 0 && month >= 0) {
-        position = offset + 9;
-        return yearMonth(year, month);
+    if (offset <= inputLimit - 9) {
+      long word = LittleEndian.getInt64(bytes, offset);
+      if ((word & 0x0000ff00000000ffL) == 0x00002d0000000022L && bytes[offset + 8] == '"') {
+        // The complete token bounds this word. Gather YYYY and MM into six digit lanes;
+        // the high/low nibble checks validate all digits without borrowing between bytes.
+        long text =
+            ((word >>> 8) & 0xffffffffL) | ((word >>> 16) & 0xffff00000000L) | 0x3030000000000000L;
+        long digits = text & 0x0f0f0f0f0f0f0f0fL;
+        if ((((text ^ ASCII_ZEROES) & 0xf0f0f0f0f0f0f0f0L)
+                | ((digits + 0x0606060606060606L) & 0x1010101010101010L))
+            == 0) {
+          long pairs = ((digits * (10 * 256 + 1)) >>> 8) & 0x00ff00ff00ff00ffL;
+          int year = (int) (pairs & 0xffff) * 100 + (int) ((pairs >>> 16) & 0xffff);
+          int month = (int) (pairs >>> 32);
+          position = offset + 9;
+          return yearMonth(year, month);
+        }
       }
     }
     return super.readYearMonth();

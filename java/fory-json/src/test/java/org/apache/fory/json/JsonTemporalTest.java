@@ -336,6 +336,49 @@ public class JsonTemporalTest extends ForyJsonTestModels {
   }
 
   @Test
+  public void readYearMonthPrefix() {
+    byte[] token = "\"2024-12\"".getBytes(StandardCharsets.US_ASCII);
+    for (int lane = 0; lane < token.length; lane++) {
+      byte saved = token[lane];
+      for (int value = 0; value < 256; value++) {
+        token[lane] = (byte) value;
+        Latin1JsonReader reference = newLatin1Reader(token);
+        Utf8JsonReader reader = newUtf8Reader(token);
+        YearMonth expected;
+        try {
+          expected = reference.readYearMonth();
+          reference.finish();
+        } catch (RuntimeException e) {
+          assertThrows(
+              RuntimeException.class,
+              () -> {
+                reader.readYearMonth();
+                reader.finish();
+              });
+          continue;
+        }
+        assertEquals(reader.readYearMonth(), expected);
+        reader.finish();
+      }
+      token[lane] = saved;
+    }
+    for (int offset = 0; offset < 8; offset++) {
+      byte[] bytes = new byte[offset + token.length + 8];
+      Arrays.fill(bytes, (byte) '9');
+      System.arraycopy(token, 0, bytes, offset, token.length);
+      Utf8JsonReader reader = newUtf8Reader(bytes);
+      for (int length = 0; length < token.length; length++) {
+        reader.reset(bytes, offset, length);
+        assertThrows(RuntimeException.class, reader::readYearMonth);
+      }
+      reader.reset(bytes, offset, token.length);
+      assertEquals(reader.readYearMonth(), YearMonth.of(2024, 12));
+      reader.finish();
+    }
+    assertEscapes(ScalarCodecs.YearMonthCodec.INSTANCE, YearMonth.of(2024, 12));
+  }
+
+  @Test
   public void readYearSlices() {
     Utf8JsonReader reader = newUtf8Reader(new byte[0]);
     for (int value : new int[] {0, 1, 999, 1000, 2024, 9999}) {
