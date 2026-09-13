@@ -216,9 +216,9 @@ public final class Utf8JsonWriter extends JsonWriter implements Appendable {
   private void writeBooleanNoEnsure(boolean value) {
     int offset = position;
     LittleEndian.putInt32(buffer, offset, value ? 0x65757274 : 0x736c6166);
-    if (!value) {
-      buffer[offset + 4] = 'e';
-    }
+    // Both callers reserve five bytes. For true the last byte is outside the logical output
+    // and will be overwritten by the following value, avoiding a data-dependent tail store.
+    buffer[offset + 4] = 'e';
     position = offset + (value ? 4 : 5);
   }
 

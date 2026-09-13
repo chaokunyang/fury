@@ -203,15 +203,18 @@ public class JsonScalarTest extends ForyJsonTestModels {
       writer.writeArrayEnd();
       assertEquals(new String(writer.toJsonBytes(), StandardCharsets.UTF_8), "[true,false,null]");
 
-      writer.reset();
-      writer.writeObjectStart();
-      writer.writeBooleanField(
-          "\"x\":".getBytes(StandardCharsets.UTF_8),
-          ",\"x\":".getBytes(StandardCharsets.UTF_8),
-          0,
-          false);
-      writer.writeObjectEnd();
-      assertEquals(new String(writer.toJsonBytes(), StandardCharsets.UTF_8), "{\"x\":false}");
+      for (boolean value : new boolean[] {true, false}) {
+        writer.reset();
+        writer.writeObjectStart();
+        writer.writeBooleanField(
+            "\"x\":".getBytes(StandardCharsets.UTF_8),
+            ",\"x\":".getBytes(StandardCharsets.UTF_8),
+            0,
+            value);
+        writer.writeObjectEnd();
+        assertEquals(
+            new String(writer.toJsonBytes(), StandardCharsets.UTF_8), "{\"x\":" + value + '}');
+      }
     }
   }
 
