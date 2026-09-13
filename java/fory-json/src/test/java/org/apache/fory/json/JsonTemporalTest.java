@@ -923,6 +923,46 @@ public class JsonTemporalTest extends ForyJsonTestModels {
   }
 
   @Test
+  public void readDurationComponents() {
+    for (String amount :
+        new String[] {
+          "99999999999999999",
+          "100000000000000000",
+          "999999999999999999",
+          "1000000000000000000",
+          "9223372036854775807",
+          "9223372036854775808"
+        }) {
+      for (String sign : new String[] {"", "-"}) {
+        for (String padding : new String[] {"", "0", "00000000000000000000"}) {
+          for (String unit : new String[] {"H", "M", "S", ".000000001S"}) {
+            byte[] token =
+                ("\"PT" + sign + padding + amount + unit + "\"")
+                    .getBytes(StandardCharsets.US_ASCII);
+            Latin1JsonReader reference = newLatin1Reader(token);
+            Utf8JsonReader reader = newUtf8Reader(token);
+            Duration expected;
+            try {
+              expected = reference.readDuration();
+              reference.finish();
+            } catch (RuntimeException e) {
+              assertThrows(
+                  RuntimeException.class,
+                  () -> {
+                    reader.readDuration();
+                    reader.finish();
+                  });
+              continue;
+            }
+            assertEquals(reader.readDuration(), expected);
+            reader.finish();
+          }
+        }
+      }
+    }
+  }
+
+  @Test
   public void readPeriodSlices() {
     int[] amounts = {Integer.MIN_VALUE, -1000000000, -1, 0, 1, 1000000000, Integer.MAX_VALUE};
     Utf8JsonReader reader = newUtf8Reader(new byte[0]);

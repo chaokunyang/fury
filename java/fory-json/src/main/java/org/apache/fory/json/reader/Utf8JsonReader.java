@@ -2720,13 +2720,26 @@ public final class Utf8JsonReader extends JsonReader {
       }
       int start = offset;
       long component = 0;
-      while (offset < limit) {
+      // Eighteen decimal digits fit in a long, including a negative accumulator. Keep checked
+      // arithmetic for the nineteenth and later digits, including zero-padded components.
+      int prefixEnd = offset + Math.min(18, limit - offset);
+      while (offset < prefixEnd) {
         int digit = bytes[offset] - '0';
         if (digit < 0 || digit > 9) {
           break;
         }
-        component = Math.subtractExact(Math.multiplyExact(component, 10L), digit);
+        component = component * 10 - digit;
         offset++;
+      }
+      if (offset == prefixEnd) {
+        while (offset < limit) {
+          int digit = bytes[offset] - '0';
+          if (digit < 0 || digit > 9) {
+            break;
+          }
+          component = Math.subtractExact(Math.multiplyExact(component, 10L), digit);
+          offset++;
+        }
       }
       if (offset == start || offset == limit) {
         return null;
