@@ -2020,28 +2020,16 @@ public final class Utf8JsonReader extends JsonReader {
     } else if (ch >= '1' && ch <= '9') {
       unscaled = ch - '0';
       offset++;
-      while (offset + 1 < inputLimit) {
-        int high = bytes[offset] - '0';
-        int low = bytes[offset + 1] - '0';
-        if ((high | low | (9 - high) | (9 - low)) < 0) {
+      while (offset < inputLimit) {
+        int digit = bytes[offset] - '0';
+        if (digit < 0 || digit > 9) {
           break;
         }
-        int pair = high * 10 + low;
-        if (!canAppendTwoDigits(unscaled, pair)) {
+        if (!canAppendDigit(unscaled, digit)) {
           return readDoubleFallback(start);
         }
-        unscaled = unscaled * 100 + pair;
-        offset += 2;
-      }
-      if (offset < inputLimit) {
-        int digit = bytes[offset] - '0';
-        if (digit >= 0 && digit <= 9) {
-          if (!canAppendDigit(unscaled, digit)) {
-            return readDoubleFallback(start);
-          }
-          unscaled = unscaled * 10 + digit;
-          offset++;
-        }
+        unscaled = unscaled * 10 + digit;
+        offset++;
       }
     } else {
       return readDoubleFallback(start);
@@ -2134,28 +2122,16 @@ public final class Utf8JsonReader extends JsonReader {
     } else if (ch >= '1' && ch <= '9') {
       unscaled = ch - '0';
       offset++;
-      while (offset + 1 < inputLimit) {
-        int high = bytes[offset] - '0';
-        int low = bytes[offset + 1] - '0';
-        if ((high | low | (9 - high) | (9 - low)) < 0) {
+      while (offset < inputLimit) {
+        int digit = bytes[offset] - '0';
+        if (digit < 0 || digit > 9) {
           break;
         }
-        int pair = high * 10 + low;
-        if (!canAppendTwoDigits(unscaled, pair)) {
+        if (!canAppendDigit(unscaled, digit)) {
           return readDoubleFallback(start);
         }
-        unscaled = unscaled * 100 + pair;
-        offset += 2;
-      }
-      if (offset < inputLimit) {
-        int digit = bytes[offset] - '0';
-        if (digit >= 0 && digit <= 9) {
-          if (!canAppendDigit(unscaled, digit)) {
-            return readDoubleFallback(start);
-          }
-          unscaled = unscaled * 10 + digit;
-          offset++;
-        }
+        unscaled = unscaled * 10 + digit;
+        offset++;
       }
     } else {
       return readDoubleFallback(start);
