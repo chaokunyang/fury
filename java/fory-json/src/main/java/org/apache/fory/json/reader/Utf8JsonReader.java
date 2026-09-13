@@ -2022,7 +2022,7 @@ public final class Utf8JsonReader extends JsonReader {
       offset++;
       while (offset < inputLimit) {
         int digit = bytes[offset] - '0';
-        if (digit < 0 || digit > 9) {
+        if (Integer.compareUnsigned(digit, 9) > 0) {
           break;
         }
         if (!canAppendDigit(unscaled, digit)) {
@@ -2124,7 +2124,7 @@ public final class Utf8JsonReader extends JsonReader {
       offset++;
       while (offset < inputLimit) {
         int digit = bytes[offset] - '0';
-        if (digit < 0 || digit > 9) {
+        if (Integer.compareUnsigned(digit, 9) > 0) {
           break;
         }
         if (!canAppendDigit(unscaled, digit)) {
